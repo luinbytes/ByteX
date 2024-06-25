@@ -39,11 +39,11 @@ class CollapsibleFrame(ttk.Frame):
         self.toggle_button.pack(padx=(0, 10), fill='x')
 
         self.user_settings_label = ttk.Label(self, text="User Settings", font=("Helvetica", 10), anchor="w")
-        self.user_settings_button = ttk.Button(self, text="⚙️")
+        self.user_settings_button = ttk.Button(self, text="⚙️", takefocus=0)
         self.user_settings_button.pack(padx=(0, 10), pady=10, fill='x')
 
         self.rpc_settings_label = ttk.Label(self, text="RPC Settings", font=("Helvetica", 10), anchor="w")
-        self.rpc_settings_button = ttk.Button(self, text="🪧")
+        self.rpc_settings_button = ttk.Button(self, text="🪧", takefocus=0)
         self.rpc_settings_button.pack(padx=(0, 10), fill='x')
 
         self.collapse()
