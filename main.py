@@ -1,310 +1,480 @@
-"""A demo script to showcase the Sun Valley ttk theme."""
-import json
-import tkinter
-import customtkinter as cttk
+import string
 import os
-import sys
+import json
+import dearpygui.dearpygui as dpg
 import discord
-from urllib.request import urlretrieve
-from tkinter import ttk
-from PIL import Image, ImageTk
-from PIL import ImageDraw
+import threading
+import requests
+import urllib
 
-class CollapsibleFrame(cttk.CTkFrame):
-    def __init__(self, parent, app):
-        super().__init__(parent)
-        self.app = app
+# Create context
+dpg.create_context()
 
-        self._is_collapsed = False
+# Create Bot
+bot = discord.Client()
 
-        self.toggle_button = cttk.CTkButton(self, text="→", command=self.toggle, width=60, height=24, border_spacing=10, border_color="black")
-        self.toggle_button.pack(side="bottom", padx=10, pady=10)
+# Globals
+global VERSION
+global username
+global status
+global servers
+global friends
+global avatar_texture
 
-        self.user_settings_button = cttk.CTkButton(self, text="⚙️", command=self.app.show_user_settings, width=60, height=24, border_spacing=10)
-        self.user_settings_button.pack(padx=10, pady=10)
+VERSION = "[Alpha] v0.1.0"
+username = None
+status = None
+servers = None
+friends = None
+avatar_texture = None
 
-        self.rpc_settings_button = cttk.CTkButton(self, text="🪧", command=self.app.show_rpc_settings, width=60, height=24, border_spacing=10)
-        self.rpc_settings_button.pack(padx=10, pady=(0, 10))
+status_mapping = {
+    "online": discord.Status.online,
+    "offline": discord.Status.offline,
+    "idle": discord.Status.idle,
+    "dnd": discord.Status.dnd
+}
 
-        self.collapse()
+# Set up logging
+INFO = "INFO"
+WARNING = "WARNING"
+ERROR = "ERROR"
+SUCCESS = "SUCCESS"
 
-    def toggle(self):
-        if self._is_collapsed:
-            self.expand()
-        else:
-            self.collapse()
+LOG_TYPES = {
+    INFO: "INFO",
+    WARNING: "WARNING",
+    ERROR: "ERROR",
+    SUCCESS: "SUCCESS"
+}
 
-    def collapse(self):
-        self._is_collapsed = True
-        self.toggle_button.configure(text="→", width=60, height=24)
-        self.user_settings_button.configure(text="⚙️", width=60, height=24)
-        self.rpc_settings_button.configure(text="🪧", width=60, height=24)
+# Logging
+def log(type, message, debug=False):
+    if debug:
+        debug_console = dpg.get_item_info("debug_console")
+        debug_console_text = dpg.get_value("debug_console")
+        debug_console_text += f"[{LOG_TYPES[type]}]: {message}\n"
+        dpg.set_value("debug_console", debug_console_text)
+    else:
+        console = dpg.get_item_info("console")
+        console_text = dpg.get_value("console")
+        console_text += f"[{LOG_TYPES[type]}]: {message}\n"
+        dpg.set_value("console", console_text)
 
+# Filesystem setup
+default_config = {
+    "token": "YOUR_TOKEN_HERE",
+    "prefix": "//",
+    "default_status": "Online",
 
-    def expand(self):
-        self._is_collapsed = False
-        self.toggle_button.configure(text="←", width=120, height=24)
-        self.user_settings_button.configure(text="⚙️ User Settings", width=120, height=24)
-        self.rpc_settings_button.configure(text="🪧 RPC Settings", width=120, height=24)
-class UserInfoPanel(cttk.CTkFrame):
-    def __init__(self, parent, app):
-        super().__init__(parent)
-        self.app = app
+    "theme": "Dark",
+}
 
-        self.username = cttk.StringVar(self, value="luinbytes!")
-        self.status = cttk.StringVar(self, value="Online")
-        self.servers = cttk.StringVar(self, value="30")
-
-        image_path = "C:/Users/Lu/Pictures/Screenshot 2024-05-13 195753.png"
-        border_path = "./resources/img/avatar_border.png"
-
-        img = Image.open(image_path)
-
-        new_size = (100, 90)
-        img = img.resize(new_size)
-
-        circle_img = Image.new('L', img.size, 0)
-        draw = ImageDraw.Draw(circle_img)
-        draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
-        img.putalpha(circle_img)
-
-        border_img = Image.open(border_path)
-        border_img = border_img.resize((125, 110))
-        final_img = Image.new('RGBA', border_img.size)
-
-        avatar_position = ((border_img.width - img.width) // 2, (border_img.height - img.height) // 2)
-        final_img.paste(img, avatar_position)
-        final_img.paste(border_img, (0, 0), border_img)
-
-        self.avatar_image = cttk.CTkImage(final_img, size=(100, 100))
-        self.app.log("WARN", f"Avatar image size: {final_img.width}x{final_img.height}")  # Print the size of the image
-
-        self.add_widgets()
-
-    def add_widgets(self):
-        self.avatar_label = cttk.CTkLabel(self, image=self.avatar_image, text="")
-        self.avatar_label.grid(row=0, column=0, pady=(0, 10), sticky="w")
-
-        self.username_label = cttk.CTkLabel(self, text="Welcome back,", font=("Helvetica", 12, "bold"))
-        self.username_label.grid(row=1, column=0, pady=(0, 10), padx=(10, 0), sticky="w")
-
-        self.username_value = cttk.CTkLabel(self, textvariable=self.username, font=("Helvetica", 12))
-        self.username_value.grid(row=1, column=1, pady=(0, 10), padx=(10, 0), sticky="w")
-
-        self.status_label = cttk.CTkLabel(self, text="Status:", font=("Helvetica", 12, "bold"))
-        self.status_label.grid(row=2, column=0, pady=(0, 10), padx=(10, 0), sticky="w")
-
-        self.status_value = cttk.CTkLabel(self, textvariable=self.status, font=("Helvetica", 12))
-        self.status_value.grid(row=2, column=1, pady=(0, 10), padx=(10, 0), sticky="w")
-
-        self.servers_label = cttk.CTkLabel(self, text="Servers:", font=("Helvetica", 12, "bold"))
-        self.servers_label.grid(row=3, column=0, pady=(0, 10), padx=(10, 0), sticky="w")
-
-        self.servers_value = cttk.CTkLabel(self, textvariable=self.servers, font=("Helvetica", 12))
-        self.servers_value.grid(row=3, column=1, pady=(0, 10), padx=(10, 0), sticky="w")
-
-class UserController(cttk.CTkFrame):
-    def __init__(self, parent, app):
-        super().__init__(parent)
-        self.app = app  # Store the App instance
-        self.add_widgets()
-
-    def add_widgets(self):
-        self.status_dropdown = cttk.CTkComboBox(self, values=["Online", "Idle", "Do Not Disturb", "Invisible"], state="readonly")
-        self.status_dropdown.set("Online")
-        self.status_dropdown.grid(row=0, column=0, pady=(10, 10), padx=(10, 0), sticky="ew")
-
-        self.update_button = cttk.CTkButton(self, text="Update Status", command=self.update_status)
-        self.update_button.grid(row=1, column=0, pady=(0, 10), padx=(10, 0), sticky="ew")
-
-    def update_status(self):
-        status = self.status_dropdown.get()
-        self.app.log("INFO", f"Simulating updating status to {status}...")
-
-class RPCSettings(cttk.CTkFrame):
-    def __init__(self, parent, app):
-        super().__init__(parent)
-        self.app = app  # Store the App instance
-        self.rpc_master_var = cttk.BooleanVar(self, value=False)
-        self.add_widgets()
-
-    def add_widgets(self):
-        self.rpc_master = cttk.CTkCheckBox(self, text="Enable RPC", variable=self.rpc_master_var)
-        self.rpc_master.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-
-        self.rpc_title_label = cttk.CTkLabel(self, text="Title:", font=("Helvetica", 12, "bold"))
-        self.rpc_title_textbox = cttk.CTkEntry(self)
-        self.rpc_title_label.grid(row=1, column=0, pady=(0, 10), padx=(10, 0), sticky="w")
-        self.rpc_title_textbox.grid(row=1, column=1, pady=(0, 10), padx=(10, 0), sticky="w")
-
-class App(cttk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-
-        self.sidebar = CollapsibleFrame(self, self)
-        self.sidebar.pack(side="left", fill="y")
-
-        self.main_frame = cttk.CTkFrame(self)
-        self.main_frame.pack(side="right", fill="both", expand=True)
-
-        # Create a Text widget for console output
-        self.console = tkinter.Text(self.main_frame, bd=0, bg="#2b2b2b", fg="white", insertbackground="white", font=("Consolas", 10), wrap="word")
-        self.console.grid(row=1, column=0, columnspan=2, padx=(0, 10), pady=(0, 20), sticky="nsew")
-
-        # Set the weight of the first row (row 0) to 3 and the second row (row 1, which contains the console) to 1
-        # This means that the first row will take up 75% of the vertical space (3 out of 4 parts), and the second row will take up 25% of the vertical space (1 out of 4 parts)
-        self.main_frame.grid_rowconfigure(0, weight=3)
-        self.main_frame.grid_rowconfigure(1, weight=1)
-
-        self.user_info_panel = UserInfoPanel(self.main_frame, self)
-        self.user_info_panel.grid(row=0, column=0, padx=(0, 10), pady=(10, 10), sticky="nsew")
-        self.user_controller = UserController(self.main_frame, self)
-        self.user_controller.grid(row=0, column=1, padx=(0, 10), pady=(10, 10), sticky="nsew")
-
-        # RPC
-        self.rpc_settings = RPCSettings(self.main_frame, self)
-        self.rpc_settings.grid(row=0, column=0, padx=(0, 10), pady=(10, 10), sticky="nsew")
-        self.rpc_settings.grid_remove()
-
-
-    SEVERITY_COLORS = {
-        "INFO": "white",
-        "SUCC": "green",
-        "WARN": "orange",
-        "ERROR": "red",
-    }
-
-    def log(self, severity, message):
-        severity = severity.upper()
-        color = self.SEVERITY_COLORS.get(severity, "black")
-
-        # Define a tag with the desired color
-        self.console.tag_config(severity, foreground=color)
-
-        # Insert the text with the color tag
-        self.console.insert(tkinter.END, "[" + severity + "] " + message + "\n", severity)
-
-        self.console.see(tkinter.END)
-
-    def show_user_settings(self):
-        self.rpc_settings.grid_remove()
-
-        self.user_info_panel.grid()
-        self.user_controller.grid()
-
-        self.log("INFO", "Showing user settings...")
-
-    def show_rpc_settings(self):
-        # Hide the UserInfoPanel and UserController
-        self.user_info_panel.grid_remove()
-        self.user_controller.grid_remove()
-
-        # Show the RPCSettings
-        self.rpc_settings.grid()
-
-        self.log("INFO", "Showing RPC settings...")
-
-
-def main():
-    # Create the root window
-    root = cttk.CTk()
-    root.title("ByteX")
-
-    cttk.set_appearance_mode("dark")
-    cttk.set_default_color_theme("blue")
-
-
-    app = App(root)
-    app.pack(expand=True, fill="both")
-    app.log("INFO","Starting ByteX...")
-
-    # Create the ByteX folder in the AppData directory
+def setup_filesystem():
+    log(INFO, "Running filesystem checks...", debug=True)
     appdata = os.getenv("APPDATA")
-    bytex_path = os.path.join(appdata, 'ByteX')
-    resource_path = os.path.join(bytex_path, 'resources')
-    img_path = os.path.join(resource_path, 'img')
-    rpc_path = os.path.join(bytex_path, 'rpc')
+    bytex_path = os.path.join(appdata, "ByteX")
 
-
-    # Check if the ByteX folder exists
-    app.log("INFO", "Checking if ByteX folder exists")
     if not os.path.exists(bytex_path):
-        os.makedirs(bytex_path)
-        app.log("WARN", "Created ByteX folder in AppData directory")
+        os.mkdir(bytex_path)
+        log(INFO, f"Path {bytex_path} created", debug=True)
+
+    subdirs = ["resources", "rpc", "img", "sound", "avatar", "cogs"]
+
+    paths = []
+    for subdir in subdirs:
+        path = os.path.join(bytex_path, subdir)
+        paths.append(path)
+
+    for path in paths:
+        try:
+            if os.path.exists(path):
+                log(INFO, f"Path {path} exists", debug=True)
+            else:
+                os.mkdir(path)
+                log(INFO, f"Path {path} created", debug=True)
+        except Exception as e:
+            log(ERROR, f"Error creating path {path}: {e}", debug=True)
+
+    log(INFO, "Checking if config.json exists...", debug=True)
+    config_path = os.path.join(bytex_path, "config.json")
+
+    try:
+        if os.path.exists(config_path):
+            log(INFO, "Config file exists", debug=True)
+        else:
+            with open(config_path, "w") as f:
+                json.dump(default_config, f)
+            log(INFO, "Config file created", debug=True)
+    except Exception as e:
+        log(ERROR, f"Error creating config file: {e}", debug=True)
+    log(SUCCESS, "Filesystem checks complete", debug=True)
+
+def update_config_element(element, value):
+    appdata = os.getenv("APPDATA")
+    bytex_path = os.path.join(appdata, "ByteX")
+    config_path = os.path.join(bytex_path, "config.json")
+    if not os.path.exists(bytex_path):
+        try:
+            os.mkdir(bytex_path)
+            if not os.path.exists(config_path):
+                with open(config_path, "w") as f:
+                    json.dump(default_config, f)
+        except Exception as e:
+            log(ERROR, f"Error creating path {bytex_path}: {e}", debug=True)
+
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+            config[element] = value
+        with open(config_path, "w") as f:
+            json.dump(config, f)
+    except Exception as e:
+        log(ERROR, f"Error updating config element {element}: {e}", debug=True)
+
+def get_config_element(element):
+    appdata = os.getenv("APPDATA")
+    bytex_path = os.path.join(appdata, "ByteX")
+    config_path = os.path.join(bytex_path, "config.json")
+    if not os.path.exists(bytex_path):
+        try:
+            os.mkdir(bytex_path)
+            if not os.path.exists(config_path):
+                with open(config_path, "w") as f:
+                    json.dump(default_config, f)
+        except Exception as e:
+            log(ERROR, f"Error creating path {bytex_path}: {e}", debug=True)
+
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+            return config[element]
+    except Exception as e:
+        log(ERROR, f"Error getting config element {element}: {e}", debug=True)
+        return None
+
+#def process_command(command):
+    #TODO Implement command processing
+
+def load_cogs():
+    # Load cogs
+    for cogs in os.listdir(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs")):
+        if cogs.endswith(".py"):
+            try:
+                exec(open(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs", cogs)).read())
+            except Exception as e:
+                log(ERROR, f"Error loading cog {cogs}: {e}", debug=True)
+
+# Define light theme
+with dpg.theme() as light_theme:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (240, 240, 240, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_Text, (0, 0, 0, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_Button, (200, 200, 200, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (220, 220, 220, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (180, 180, 180, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TitleBg, (220, 220, 220, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TitleBgActive, (200, 200, 200, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_Tab, (190, 190, 190, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TabHovered, (170, 170, 170, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TabActive, (150, 150, 150, 255))
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5.0)
+
+# Define dark theme
+with dpg.theme() as dark_theme:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (30, 30, 30, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 255, 255, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_Button, (70, 70, 70, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (90, 90, 90, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (110, 110, 110, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TitleBg, (40, 40, 40, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TitleBgActive, (60, 60, 60, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_Tab, (50, 50, 50, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TabHovered, (70, 70, 70, 255))
+        dpg.add_theme_color(dpg.mvThemeCol_TabActive, (90, 90, 90, 255))
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5.0)
+
+def bind_theme():
+    if get_config_element("theme") == "Light":
+        dpg.bind_theme(light_theme)
+        log(INFO, "Light theme applied", debug=True)
     else:
-        app.log("SUCC", "ByteX folder already exists")
+        dpg.bind_theme(dark_theme)
+        log(INFO, "Dark theme applied", debug=True)
 
-    # Check if the resources folder exists
-    app.log("INFO", "Checking if resources folder exists")
-    if not os.path.exists(resource_path):
-        os.makedirs(resource_path)
-        app.log("WARN", "Created resources folder in ByteX folder")
+# Callback functions for saving settings
+def save_user_settings(sender, app_data, user_data):
+    username = dpg.get_value("username_input")
+    status = dpg.get_value("default_startup_status")
+    # Save user settings to config.json
+    try:
+        update_config_element("default_status", status)
+        log(INFO, f"Saving User Settings: Status: {status}", debug=True)
+    except Exception as e:
+        log(ERROR, f"Error saving user settings: {e}", debug=True)
+
+
+
+def save_rpc_settings(sender, app_data, user_data):
+    rpc_setting = dpg.get_value("rpc_setting_input")
+    log(INFO, f"Saving RPC Settings: RPC Setting: {rpc_setting}", debug=True)
+    # Implement save logic
+
+
+def save_config_settings(sender, app_data, user_data):
+    config_setting = dpg.get_value("config_setting_input")
+    log(INFO, f"Saving Config Settings: Config Setting: {config_setting}", debug=True)
+    # Implement save logic
+
+
+def save_theme_settings(sender, app_data, user_data):
+    theme_setting = dpg.get_value("theme_setting_input")
+    if theme_setting == "Light":
+        dpg.bind_theme(light_theme)
     else:
-        app.log("SUCC", "resources folder already exists")
+        dpg.bind_theme(dark_theme)
+    # Save theme setting to config.json
+    try:
+        update_config_element("theme", theme_setting)
+        log(INFO, f"Saving Theme Settings: Theme Setting: {theme_setting}", debug=True)
+    except Exception as e:
+        log(ERROR, f"Error saving theme setting: {e}", debug=True)
 
-    # Check if the img folder exists
-    app.log("INFO", "Checking if img folder exists")
-    if not os.path.exists(img_path):
-        os.makedirs(img_path)
-        app.log("WARN", "Created img folder in resources folder")
-    else:
-        app.log("SUCC", "img folder already exists")
+def about_bytex():
+    log(INFO, f"--- ABOUT ByteX {VERSION} ---", debug=False)
+    log(INFO, "ByteX is a Discord bot client that allows you to manage your Discord bot with ease.", debug=False)
+    log(INFO, "ByteX is currently in alpha and is not recommended for production use.", debug=False)
+    log(INFO, "Infinitely customizable.", debug=False)
+    log(INFO, "--- ByteX Credits ---", debug=False)
+    log(INFO, "Developed by @0x6c75.", debug=False)
+    log(INFO, "ByteX is powered by Discord.py-self and DearPyGui.", debug=False)
 
-    # Check if the rpc folder exists
-    app.log("INFO", "Checking if rpc folder exists")
-    if not os.path.exists(rpc_path):
-        os.makedirs(rpc_path)
-        app.log("WARN", "Created rpc folder in ByteX folder")
-    else:
-        app.log("SUCC", "rpc folder already exists")
+def about_developer():
+    log(INFO, f"--- ABOUT DEVELOPER ---", debug=False)
+    log(INFO, "0x6c75 (luinbytes) is a software developer and cybersecurity enthusiast.", debug=False)
+    log(INFO, "He is the developer of ByteX, ByteBot, U-RCS and old gems such as nxzUI.", debug=False)
+    log(INFO, "Github: https://github.com/luinytes")
+    log(INFO, "Discord: @0x6c75")
 
-    # Create a default RPC json
-    default_rpc_path = os.path.join(rpc_path, 'default.json')
-    default_rpc = {
-        "title": "ByteX",
-        "type": "playing",
-        "state": "Dubious Little Guy Inc.",
-        "details": "Made By 0x6c75",
-        "large_image": "https://media1.tenor.com/m/7sw5JRPIpLMAAAAC/cat-cate.gif",
-        "large_text": "ermmmmm",
-        "small_image": "https://cdn.discordapp.com/emojis/725077188843667639.gif?size=80&amp;quality=lossless",
-        "small_text": "ermmmmm",
-        "button_text": "ByteX Discord",
-        "button_url": "https://discord.gg/ADzuh7EEQB",
-        "button2_text": None,
-        "button2_url": None,
-        "timer": True,
-        "party": [
-            None,
-            None
-        ]
-    }
+def support_server():
+    log(INFO, "--- ByteX SUPPORT SERVER ---", debug=False)
+    log(INFO, "Need help with ByteX? Join the ByteX support server!", debug=False)
+    log(INFO, "Join the ByteX support server: https://discord.gg/ADzuh7EEQB")
 
-    app.log("INFO", "Checking if RPC default.json exists")
-    if not os.path.exists(default_rpc_path):
-        with open(default_rpc_path, 'w') as f:
-            json.dump(default_rpc, f, indent=4)
-        app.log("WARN", "Created default.json in rpc folder")
-    else:
-        app.log("SUCC", "default.json already exists")
+def open_folder():
+    log(INFO, "Opening ByteX folder...", debug=False)
+    try:
+        os.system("start %appdata%/ByteX")
+    except Exception as e:
+        log(ERROR, f"Error opening ByteX folder, check debug console for more details.", debug=False)
+        log(ERROR, f"Error opening the ByteX folder: {e}", debug=True)
 
-    # Check if the main config.json exists
-    config_path = os.path.join(bytex_path, 'config.json')
-    default_config = {
-        "token": "token",
-        "prefix": "//",
-        "status": "online",
-    }
+def exit():
+    log(INFO, "Exiting ByteX...", debug=False)
+    try:
+        dpg.stop_dearpygui()
+        dpg.destroy_context()
+    except Exception as e:
+        log(ERROR, f"Error exiting ByteX, check debug console for more details.", debug=False)
+        log(ERROR, f"Error exiting ByteX: {e}", debug=True)
+def download_avatar():
+    log(INFO, "Downloading avatar...", debug=True)
+    try:
+        if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+            url = bot.user.avatar.url
+            requests.get(url)
+            img_data = requests.get(url).content
+            with open(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"), "wb") as f:
+                f.write(img_data)
+            log(SUCCESS, "Avatar downloaded successfully", debug=True)
+        else:
+            log(INFO, "Avatar already exists", debug=True)
+    except Exception as e:
+        log(ERROR, f"Error downloading avatar, check debug console for more details.", debug=False)
+        log(ERROR, f"Error downloading avatar: {e}", debug=True)
 
-    app.log("INFO", "Checking if config.json exists")
-    if not os.path.exists(config_path):
-        with open(config_path, 'w') as f:
-            json.dump(default_config, f, indent=4)
-        app.log("WARN", "Created config.json in ByteX folder")
-    else:
-        app.log("SUCC", "config.json already exists")
+if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+    width, height, channels, data = dpg.load_image(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"))
 
-    root.mainloop()
+    with dpg.texture_registry():
+        avatar_texture = dpg.add_static_texture(width, height, data, tag="avatar_texture")
 
-if __name__ == "__main__":
-    main()
+# Main window
+with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, height=400, no_collapse=True, no_resize=True, no_move=True, pos=(0, 0), no_close=True):
+    with dpg.menu_bar():
+        with dpg.menu(label="About"):
+            dpg.add_menu_item(label="About ByteX", callback=about_bytex)
+            dpg.add_menu_item(label="About Developer", callback=about_developer)
+
+        with dpg.menu(label="Help"):
+            dpg.add_menu_item(label="Discord Support Server", callback=support_server)
+            dpg.add_menu_item(label="Report Bug", callback=support_server)
+
+        with dpg.menu(label="Settings"):
+            dpg.add_menu_item(label="Open Folder", callback=open_folder)
+            dpg.add_menu_item(label="Restart", callback=exit)
+            dpg.add_menu_item(label="Exit", callback=exit)
+
+    with dpg.tab_bar():
+        # User Settings Tab
+        with dpg.tab(label="User Settings"):
+            if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+                with dpg.group(horizontal=False, tag="user_settings_group"):
+                    dpg.add_text("No avatar found, ByteX should download it automatically.")
+                    dpg.add_text("Restart ByteX once authed to show avatar.")
+                    dpg.add_text("Or you can set your own. Your Avatar is only downloaded once.")
+                    dpg.add_button(label="Open ByteX Folder", callback=open_folder)
+            else:
+                with dpg.group(horizontal=True, tag="user_settings_group"):
+                    dpg.add_image("avatar_texture", width=100, height=100, border_color=(255, 255, 255, 255), tag="avatar_image")
+
+            with dpg.group():
+                dpg.add_text("Waiting for auth...", tag="username")
+                dpg.add_text("Status: Offline", tag="status")
+                dpg.add_text("Servers: 0", tag="servers")
+
+            dpg.add_spacer(height=20)
+
+            dpg.add_text("Edit User Settings")
+            dpg.add_combo(label="Startup Status [Broken]", items=["Online", "Idle", "Do Not Disturb", "Invisible"], tag="default_startup_status", default_value=get_config_element("default_status"))
+            dpg.add_button(label="Save User Settings", callback=save_user_settings)
+
+        # RPC Settings Tab
+        with dpg.tab(label="RPC Settings"):
+            dpg.add_combo(label="RPC Profile", items=["Default", "Custom"], tag="rpc_profile_input", default_value="Default", width=200)
+            dpg.add_spacer(height=20)
+            with dpg.group(horizontal=False):
+                dpg.add_text("Main RPC Settings")
+                dpg.add_combo(label="Status", items=["Playing", "Watching", "Streaming", "Listening"], tag="rpc_status_input", default_value="Playing")
+
+        # Steam Tools Tab
+        with dpg.tab(label="Steam Tools"):
+            with dpg.group(horizontal=True):
+                with dpg.group(horizontal=False):
+                    dpg.add_text("Steam ID")
+                    dpg.add_input_text(hint="Enter Steam ID", width=200)
+                    dpg.add_button(label="Get Steam Profile")
+
+        # Spy  Settings Tab
+        with dpg.tab(label="ByteSpy Settings"):
+            with dpg.group(horizontal=True):
+                with dpg.group(horizontal=False):
+                    dpg.add_text("Users to Spy On")
+                    dpg.add_input_text(tag="current_users", hint="Users currently being spied on", width=200, height=140,
+                                       multiline=True, readonly=True)
+
+                with dpg.group(horizontal=True):
+                    # Recent Messages
+                    with dpg.group(horizontal=False):
+                        dpg.add_text("Recent Messages")
+                        dpg.add_input_text(hint="Recent messages with user", width=390, height=140, multiline=True,
+                                           readonly=True)
+
+                with dpg.group(horizontal=False):
+                    with dpg.group(horizontal=False):
+                        dpg.add_spacer(height=20)
+                        dpg.add_input_text(tag="add_user", hint="Enter user ID")
+                        dpg.add_button(label="Add User")
+                        dpg.add_same_line()
+                        dpg.add_spacer(width=17)
+                        dpg.add_same_line()
+                        dpg.add_button(label="Remove User")
+
+            with dpg.group(horizontal=True):
+                #with dpg.group(horizontal=False):
+                    #dpg.add_image("avatar_texture2", width=120, height=110, border_color=(255, 255, 255, 255))
+
+                # Spy information
+                with dpg.group(horizontal=False):
+                    dpg.add_text("Users Spy Information")
+                    dpg.add_text("User ID: 0x6c75")
+                    dpg.add_text("Status: Online")
+                    dpg.add_text("Mutual Servers: 10")
+                    dpg.add_text("Mutual Friends: 5")
+
+        # Config Settings Tab
+        with dpg.tab(label="Config Settings"):
+            dpg.add_text("Edit Config Settings")
+            dpg.add_input_text(label="Config Setting", tag="config_setting_input", hint="Enter config setting")
+            dpg.add_button(label="Save Config Settings", callback=save_config_settings)
+
+        # Theme Settings Tab
+        with dpg.tab(label="Theme Settings"):
+            dpg.add_combo(label="Theme", items=["Light", "Dark"], tag="theme_setting_input", default_value=get_config_element("theme"))
+            dpg.add_button(label="Save Theme Settings", callback=save_theme_settings)
+
+# Console Window
+with dpg.window(width=800, height=200, no_collapse=True, no_resize=True, no_title_bar=True, no_move=True, pos=(0, 400)):
+    with dpg.tab_bar():
+        # Console tab
+        with dpg.tab(label="Console"):
+            dpg.add_input_text(hint="Welcome to ByteX Console", tag="console", multiline=True, readonly=True, width=780, height=110)
+
+            dpg.add_input_text(label="Command", hint="Enter command here")
+            dpg.add_button(label="Execute")
+
+        # Debug tab
+        with dpg.tab(label="Debug"):
+            dpg.add_input_text(hint="Welcome to ByteX Debug Console", tag="debug_console", multiline=True, readonly=True, width=780, height=160)
+
+# Discord Functions
+def start_bot():
+    bot.run(get_config_element("token"))
+
+@bot.event
+async def on_ready():
+    log(SUCCESS, "Bot is ready", debug=True)
+    log(SUCCESS, f"Logged in as {bot.user.name}", debug=False)
+    download_avatar()
+
+    # Update Globals
+    log(INFO, "Updating globals...", debug=True)
+    username = bot.user.name
+    status = get_config_element("default_status")
+    servers = len(bot.guilds)
+
+
+    dpg.set_value("username", f"Username: {username}")
+    dpg.set_value("status", f"Status: {status}")
+    dpg.set_value("servers", f"Servers: {servers}")
+
+    log(INFO, f"Globals:~ Username: {username}, Status: {status}, Servers: {servers}", debug=True)
+
+    # Set Default Status
+    # status = get_config_element("default_status").lower()
+    # try:
+    #     log(INFO, "Setting default status...", debug=True)
+    #     await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
+    # except Exception as e:
+    #     log(ERROR, f"Error setting default status: {e}", debug=True)
+    # await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        if message.content.startswith(get_config_element("prefix")):
+            # remove the prefix
+            command = message.content[len(get_config_element("prefix")):]
+            log(INFO, f"Command: {command}", debug=False)
+            for cogs in os.listdir(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs")):
+                if cogs.endswith(".py"):
+                    try:
+                        exec(open(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs", cogs)).read())
+                    except Exception as e:
+                        log(ERROR, f"Error loading cog {cogs}: {e}", debug=True)
+
+# Setup and show the main window
+bot_thread = threading.Thread(target=start_bot)
+
+bot_thread.start()
+
+setup_filesystem()
+dpg.create_viewport(title='ByteX', width=815, height=638, resizable=False)
+dpg.setup_dearpygui()
+
+bind_theme()
+
+dpg.show_viewport()
+dpg.start_dearpygui()
+dpg.destroy_context()
