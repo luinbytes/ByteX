@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="995fe29b-e866-4245-a22a-fcd8bf0d8149" name="Changes" comment="Refactor UI components and add RPC settings&#10;&#10;- Replace sv_ttk with customtkinter (cttk) for UI components&#10;- Refactor CollapsibleFrame, UserInfoPanel, and UserController classes to use cttk&#10;- Add RPCSettings class for RPC settings&#10;- Add method to show RPC settings in App class&#10;- Add rpc folder and default RPC json creation in main function">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    <list default="true" id="995fe29b-e866-4245-a22a-fcd8bf0d8149" name="Changes" comment="Refactor bot structure and enhance functionality  This commit includes a significant refactor of the bot structure, transitioning from a simple discord.Client to a more robust commands.Bot structure. This allows for more advanced command handling and cog loading.  The ByteX class was introduced, which inherits from commands.Bot and includes additional functionality such as on_ready and on_message event handlers, cog loading, command checking, and command running.  The setup_filesystem function was also updated to improve error handling and code readability. The config.json file is now created with indented JSON for better readability.  The start_bot function was updated to handle exceptions when starting the bot, providing more robust error handling.  The bot's version was updated to '[Alpha] v0.2.0' to reflect these changes.  Additional changes include the introduction of a 'deletion_delay' config setting, and the moving of the 'Config Settings' tab to a new 'Cog Settings' tab in the GUI.">
+      <change afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,25 +46,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;A:/Github/bytex/main.py&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;npm.run.executor&quot;: &quot;Run&quot;,
-    &quot;npm.start.executor&quot;: &quot;Run&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\PyCharm 2024.1.2\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "A:/Github/bytex/main.py",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "npm.run.executor": "Run",
+    "npm.start.executor": "Run",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "C:\\Program Files\\JetBrains\\PyCharm 2024.1.2\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="bytex" />
@@ -113,6 +113,8 @@
       <workItem from="1719341093351" duration="9955000" />
       <workItem from="1719402548490" duration="9267000" />
       <workItem from="1719531087190" duration="448000" />
+      <workItem from="1719561109977" duration="13821000" />
+      <workItem from="1719577756614" duration="6376000" />
     </task>
     <task id="LOCAL-00001" summary="Updated button definitions to exclude focus cycle in CollapsibleFrame">
       <option name="closed" value="true" />
@@ -130,7 +132,15 @@
       <option name="project" value="LOCAL" />
       <updated>1719411468567</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Refactor bot structure and enhance functionality  This commit includes a significant refactor of the bot structure, transitioning from a simple discord.Client to a more robust commands.Bot structure. This allows for more advanced command handling and cog loading.  The ByteX class was introduced, which inherits from commands.Bot and includes additional functionality such as on_ready and on_message event handlers, cog loading, command checking, and command running.  The setup_filesystem function was also updated to improve error handling and code readability. The config.json file is now created with indented JSON for better readability.  The start_bot function was updated to handle exceptions when starting the bot, providing more robust error handling.  The bot's version was updated to '[Alpha] v0.2.0' to reflect these changes.  Additional changes include the introduction of a 'deletion_delay' config setting, and the moving of the 'Config Settings' tab to a new 'Cog Settings' tab in the GUI.">
+      <option name="closed" value="true" />
+      <created>1719584086492</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1719584086492</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -140,10 +150,21 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Updated button definitions to exclude focus cycle in CollapsibleFrame" />
     <MESSAGE value="Refactor UI components and add RPC settings&#10;&#10;- Replace sv_ttk with customtkinter (cttk) for UI components&#10;- Refactor CollapsibleFrame, UserInfoPanel, and UserController classes to use cttk&#10;- Add RPCSettings class for RPC settings&#10;- Add method to show RPC settings in App class&#10;- Add rpc folder and default RPC json creation in main function" />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactor UI components and add RPC settings&#10;&#10;- Replace sv_ttk with customtkinter (cttk) for UI components&#10;- Refactor CollapsibleFrame, UserInfoPanel, and UserController classes to use cttk&#10;- Add RPCSettings class for RPC settings&#10;- Add method to show RPC settings in App class&#10;- Add rpc folder and default RPC json creation in main function" />
+    <MESSAGE value="Refactor bot structure and enhance functionality  This commit includes a significant refactor of the bot structure, transitioning from a simple discord.Client to a more robust commands.Bot structure. This allows for more advanced command handling and cog loading.  The ByteX class was introduced, which inherits from commands.Bot and includes additional functionality such as on_ready and on_message event handlers, cog loading, command checking, and command running.  The setup_filesystem function was also updated to improve error handling and code readability. The config.json file is now created with indented JSON for better readability.  The start_bot function was updated to handle exceptions when starting the bot, providing more robust error handling.  The bot's version was updated to '[Alpha] v0.2.0' to reflect these changes.  Additional changes include the introduction of a 'deletion_delay' config setting, and the moving of the 'Config Settings' tab to a new 'Cog Settings' tab in the GUI." />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactor bot structure and enhance functionality  This commit includes a significant refactor of the bot structure, transitioning from a simple discord.Client to a more robust commands.Bot structure. This allows for more advanced command handling and cog loading.  The ByteX class was introduced, which inherits from commands.Bot and includes additional functionality such as on_ready and on_message event handlers, cog loading, command checking, and command running.  The setup_filesystem function was also updated to improve error handling and code readability. The config.json file is now created with indented JSON for better readability.  The start_bot function was updated to handle exceptions when starting the bot, providing more robust error handling.  The bot's version was updated to '[Alpha] v0.2.0' to reflect these changes.  Additional changes include the introduction of a 'deletion_delay' config setting, and the moving of the 'Config Settings' tab to a new 'Cog Settings' tab in the GUI." />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/main.py</url>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/bytex$main.coverage" NAME="main Coverage Results" MODIFIED="1719411538469" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/main_py$main.coverage" NAME="main Coverage Results" MODIFIED="1719531169198" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/main_py$main.coverage" NAME="main Coverage Results" MODIFIED="1719583985654" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

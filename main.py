@@ -1,8 +1,12 @@
+import importlib
 import string
 import os
 import json
+import sys
+
 import dearpygui.dearpygui as dpg
 import discord
+from discord.ext import commands, tasks
 import threading
 import requests
 import urllib
@@ -11,9 +15,73 @@ import urllib
 dpg.create_context()
 
 # Create Bot
-bot = discord.Client()
+class ByteX(commands.Bot):
+    def __init__(self):
+        prefix_str = get_config_element("prefix")
+        super().__init__(command_prefix=prefix_str)
+        self.bot = discord.Client()
+        self.message_removal_queue = []
+    async def on_ready(self):
+        await self.load_cogs()
+        download_avatar()
 
-# Globals
+        # Update Globals
+        log(INFO, "Updating globals...", debug=True)
+        username = self.user.name
+        status = get_config_element("default_status")
+        servers = len(self.guilds)
+
+        dpg.set_value("username", f"Username: {username}")
+        dpg.set_value("status", f"Status: {status}")
+        dpg.set_value("servers", f"Servers: {servers}")
+
+        log(SUCCESS, "Bot is ready", debug=True)
+        log(SUCCESS, f"Logged in as {self.user.name}", debug=False)
+
+        # Set Default Status
+        # status = get_config_element("default_status").lower()
+        # try:
+        #     log(INFO, "Setting default status...", debug=True)
+        #     await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
+        # except Exception as e:
+        #     log(ERROR, f"Error setting default status: {e}", debug=True)
+        # await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
+
+    async def on_message(self, message):
+        ctx = await self.get_context(message)
+        if message.author == self.user:
+            if message.content.startswith(get_config_element("prefix")):
+                if self.check_command_exists(message.content.split(" ")[0][2:]):
+                    await self.run_command(ctx, message.content.split(" ")[0][2:], message)
+                else:
+                    await ctx.send("Command not found.")
+
+    async def load_cogs(self):
+        log(INFO, "Loading cogs...", debug=True)
+        for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+            if file.endswith(".py"):
+                extension = file[:-3]
+                try:
+                    await self.load_extension(f"cogs.{extension}")
+                    log(SUCCESS, f"Loaded extension '{extension}'", debug=True)
+                except Exception as e:
+                    exception = f"{type(e).__name__}: {e}"
+                    log(ERROR, f"Failed to load extension {extension}: {exception}", debug=True)
+
+    def check_command_exists(self, command_name):
+        command = self.get_command(command_name)
+        return command is not None
+
+    async def run_command(self, ctx, command_name, message):
+        command = self.get_command(command_name)
+        if command:
+            args = message.content.split()[1:]  # Get the arguments after the command
+            log(SUCCESS, f"Command '{command_name}' executed successfully", debug=False)
+            await ctx.invoke(command, *args)
+        else:
+            await ctx.send(f"Command '{command_name}' does not exist.")
+
+
 global VERSION
 global username
 global status
@@ -21,7 +89,7 @@ global servers
 global friends
 global avatar_texture
 
-VERSION = "[Alpha] v0.1.0"
+VERSION = "[Alpha] v0.2.0"
 username = None
 status = None
 servers = None
@@ -65,6 +133,7 @@ def log(type, message, debug=False):
 default_config = {
     "token": "YOUR_TOKEN_HERE",
     "prefix": "//",
+    "deletion_delay": "20",
     "default_status": "Online",
 
     "theme": "Dark",
@@ -78,6 +147,19 @@ def setup_filesystem():
     if not os.path.exists(bytex_path):
         os.mkdir(bytex_path)
         log(INFO, f"Path {bytex_path} created", debug=True)
+
+    log(INFO, "Checking if config.json exists...", debug=True)
+    config_path = os.path.join(bytex_path, "config.json")
+
+    try:
+        if os.path.exists(config_path):
+            log(INFO, "Config file exists", debug=True)
+        else:
+            with open(config_path, "w") as f:
+                json.dump(default_config, f, indent=4)
+            log(INFO, "Config file created", debug=True)
+    except Exception as e:
+        log(ERROR, f"Error creating config file: {e}", debug=True)
 
     subdirs = ["resources", "rpc", "img", "sound", "avatar", "cogs"]
 
@@ -95,19 +177,6 @@ def setup_filesystem():
                 log(INFO, f"Path {path} created", debug=True)
         except Exception as e:
             log(ERROR, f"Error creating path {path}: {e}", debug=True)
-
-    log(INFO, "Checking if config.json exists...", debug=True)
-    config_path = os.path.join(bytex_path, "config.json")
-
-    try:
-        if os.path.exists(config_path):
-            log(INFO, "Config file exists", debug=True)
-        else:
-            with open(config_path, "w") as f:
-                json.dump(default_config, f)
-            log(INFO, "Config file created", debug=True)
-    except Exception as e:
-        log(ERROR, f"Error creating config file: {e}", debug=True)
     log(SUCCESS, "Filesystem checks complete", debug=True)
 
 def update_config_element(element, value):
@@ -136,34 +205,35 @@ def get_config_element(element):
     appdata = os.getenv("APPDATA")
     bytex_path = os.path.join(appdata, "ByteX")
     config_path = os.path.join(bytex_path, "config.json")
+
     if not os.path.exists(bytex_path):
         try:
             os.mkdir(bytex_path)
-            if not os.path.exists(config_path):
-                with open(config_path, "w") as f:
-                    json.dump(default_config, f)
         except Exception as e:
             log(ERROR, f"Error creating path {bytex_path}: {e}", debug=True)
+            return None
+
+    if not os.path.exists(config_path):
+        try:
+            with open(config_path, "w") as f:
+                json.dump(default_config, f, indent=4)
+            log(INFO, "Config file created", debug=True)
+        except Exception as e:
+            log(ERROR, f"Error creating config file: {e}", debug=True)
+            return None
 
     try:
         with open(config_path, "r") as f:
             config = json.load(f)
-            return config[element]
+            if element in config:
+                return config[element]
+            else:
+                log(ERROR, f"Element '{element}' not found in config file", debug=True)
+                return None
     except Exception as e:
-        log(ERROR, f"Error getting config element {element}: {e}", debug=True)
+        log(ERROR, f"Error accessing config element '{element}': {e}", debug=True)
         return None
 
-#def process_command(command):
-    #TODO Implement command processing
-
-def load_cogs():
-    # Load cogs
-    for cogs in os.listdir(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs")):
-        if cogs.endswith(".py"):
-            try:
-                exec(open(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs", cogs)).read())
-            except Exception as e:
-                log(ERROR, f"Error loading cog {cogs}: {e}", debug=True)
 
 # Define light theme
 with dpg.theme() as light_theme:
@@ -213,7 +283,6 @@ def save_user_settings(sender, app_data, user_data):
         log(INFO, f"Saving User Settings: Status: {status}", debug=True)
     except Exception as e:
         log(ERROR, f"Error saving user settings: {e}", debug=True)
-
 
 
 def save_rpc_settings(sender, app_data, user_data):
@@ -279,6 +348,7 @@ def exit():
         log(ERROR, f"Error exiting ByteX, check debug console for more details.", debug=False)
         log(ERROR, f"Error exiting ByteX: {e}", debug=True)
 def download_avatar():
+    bot = ByteX()
     log(INFO, "Downloading avatar...", debug=True)
     try:
         if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
@@ -293,6 +363,7 @@ def download_avatar():
     except Exception as e:
         log(ERROR, f"Error downloading avatar, check debug console for more details.", debug=False)
         log(ERROR, f"Error downloading avatar: {e}", debug=True)
+
 
 if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
     width, height, channels, data = dpg.load_image(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"))
@@ -394,10 +465,15 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
                     dpg.add_text("Mutual Friends: 5")
 
         # Config Settings Tab
-        with dpg.tab(label="Config Settings"):
-            dpg.add_text("Edit Config Settings")
-            dpg.add_input_text(label="Config Setting", tag="config_setting_input", hint="Enter config setting")
-            dpg.add_button(label="Save Config Settings", callback=save_config_settings)
+        with dpg.tab(label="Cog Settings"):
+            current_cogs = []
+            for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+                if file.endswith(".py"):
+                    extension = file[:-3]
+                    current_cogs.append(extension)
+            with dpg.group(horizontal=True):
+                dpg.add_text("Current Cogs")
+                dpg.add_input_text(hint="Current cogs", width=200, height=140, multiline=True, readonly=True, default_value="\n".join(current_cogs))
 
         # Theme Settings Tab
         with dpg.tab(label="Theme Settings"):
@@ -420,61 +496,45 @@ with dpg.window(width=800, height=200, no_collapse=True, no_resize=True, no_titl
 
 # Discord Functions
 def start_bot():
-    bot.run(get_config_element("token"))
+    bot = ByteX()
+    try:
+        log(INFO, "Starting bot...", debug=False)
+        bot.run(get_config_element("token"))
+    except Exception as e:
+        log(ERROR, f"There was an error starting the bot, check debug for more details...", debug=False)
+        log(ERROR, f"Error starting bot: {e}", debug=True)
 
-@bot.event
-async def on_ready():
-    log(SUCCESS, "Bot is ready", debug=True)
-    log(SUCCESS, f"Logged in as {bot.user.name}", debug=False)
-    download_avatar()
+async def update_status():
+    bot = ByteX()
+    status = get_config_element("default_status").lower()
+    try:
+        log(INFO, "Setting default status...", debug=True)
+        await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
+    except Exception as e:
+        log(ERROR, f"Error setting default status: {e}", debug=True)
+        await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
 
-    # Update Globals
-    log(INFO, "Updating globals...", debug=True)
-    username = bot.user.name
-    status = get_config_element("default_status")
-    servers = len(bot.guilds)
+# Main entry point
+if __name__ == "__main__":
+    try:
+        setup_filesystem()  # Ensure filesystem is set up correctly
+    except Exception as e:
+        log(ERROR, f"Error setting up filesystem: {e}", debug=True)
+    bind_theme()  # Bind the correct theme based on config
 
+    # Start the bot in the main thread
+    bot_thread = threading.Thread(target=start_bot)
+    bot_thread.start()
 
-    dpg.set_value("username", f"Username: {username}")
-    dpg.set_value("status", f"Status: {status}")
-    dpg.set_value("servers", f"Servers: {servers}")
+    dpg.create_context()
+    dpg.create_viewport(title='ByteX', width=815, height=638, resizable=False)
 
-    log(INFO, f"Globals:~ Username: {username}, Status: {status}, Servers: {servers}", debug=True)
+    dpg.setup_dearpygui()
 
-    # Set Default Status
-    # status = get_config_element("default_status").lower()
-    # try:
-    #     log(INFO, "Setting default status...", debug=True)
-    #     await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
-    # except Exception as e:
-    #     log(ERROR, f"Error setting default status: {e}", debug=True)
-    # await bot.change_presence(status=status_mapping[status], activity=discord.CustomActivity(name="ByteX"))
+    dpg.show_viewport()
 
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        if message.content.startswith(get_config_element("prefix")):
-            # remove the prefix
-            command = message.content[len(get_config_element("prefix")):]
-            log(INFO, f"Command: {command}", debug=False)
-            for cogs in os.listdir(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs")):
-                if cogs.endswith(".py"):
-                    try:
-                        exec(open(os.path.join(os.getenv("APPDATA"), "ByteX", "cogs", cogs)).read())
-                    except Exception as e:
-                        log(ERROR, f"Error loading cog {cogs}: {e}", debug=True)
+    # Start DearPyGui event loop
+    dpg.start_dearpygui()
 
-# Setup and show the main window
-bot_thread = threading.Thread(target=start_bot)
-
-bot_thread.start()
-
-setup_filesystem()
-dpg.create_viewport(title='ByteX', width=815, height=638, resizable=False)
-dpg.setup_dearpygui()
-
-bind_theme()
-
-dpg.show_viewport()
-dpg.start_dearpygui()
-dpg.destroy_context()
+    # Cleanup after DearPyGui exits
+    dpg.destroy_context()
