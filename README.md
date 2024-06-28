@@ -1,6 +1,6 @@
 # ByteX
 
-ByteX is a Discord bot client that allows you to manage your Discord bot with ease. It is developed using Python and the discord.py library.
+ByteX is a Discord bot client that allows you to manage your Discord client with ease. It is developed using Python and the discord.py-self library.
 
 ## Features
 

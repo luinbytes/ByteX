@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="995fe29b-e866-4245-a22a-fcd8bf0d8149" name="Changes" comment="Refactor bot structure and enhance functionality  This commit includes a significant refactor of the bot structure, transitioning from a simple discord.Client to a more robust commands.Bot structure. This allows for more advanced command handling and cog loading.  The ByteX class was introduced, which inherits from commands.Bot and includes additional functionality such as on_ready and on_message event handlers, cog loading, command checking, and command running.  The setup_filesystem function was also updated to improve error handling and code readability. The config.json file is now created with indented JSON for better readability.  The start_bot function was updated to handle exceptions when starting the bot, providing more robust error handling.  The bot's version was updated to '[Alpha] v0.2.0' to reflect these changes.  Additional changes include the introduction of a 'deletion_delay' config setting, and the moving of the 'Config Settings' tab to a new 'Cog Settings' tab in the GUI.">
+    <list default="true" id="995fe29b-e866-4245-a22a-fcd8bf0d8149" name="Changes" comment="README and requirements.txt">
       <change afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
     </list>
@@ -119,7 +118,7 @@
       <workItem from="1719561109977" duration="13821000" />
       <workItem from="1719577756614" duration="6255000" />
       <workItem from="1719596615078" duration="117000" />
-      <workItem from="1719596775656" duration="1002000" />
+      <workItem from="1719596775656" duration="1081000" />
     </task>
     <task id="LOCAL-00001" summary="Updated button definitions to exclude focus cycle in CollapsibleFrame">
       <option name="closed" value="true" />
@@ -137,7 +136,15 @@
       <option name="project" value="LOCAL" />
       <updated>1719411468567</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="README and requirements.txt">
+      <option name="closed" value="true" />
+      <created>1719597813339</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1719597813339</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -158,7 +165,8 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Updated button definitions to exclude focus cycle in CollapsibleFrame" />
     <MESSAGE value="Refactor UI components and add RPC settings&#10;&#10;- Replace sv_ttk with customtkinter (cttk) for UI components&#10;- Refactor CollapsibleFrame, UserInfoPanel, and UserController classes to use cttk&#10;- Add RPCSettings class for RPC settings&#10;- Add method to show RPC settings in App class&#10;- Add rpc folder and default RPC json creation in main function" />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactor UI components and add RPC settings&#10;&#10;- Replace sv_ttk with customtkinter (cttk) for UI components&#10;- Refactor CollapsibleFrame, UserInfoPanel, and UserController classes to use cttk&#10;- Add RPCSettings class for RPC settings&#10;- Add method to show RPC settings in App class&#10;- Add rpc folder and default RPC json creation in main function" />
+    <MESSAGE value="README and requirements.txt" />
+    <option name="LAST_COMMIT_MESSAGE" value="README and requirements.txt" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
