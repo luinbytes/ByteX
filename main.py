@@ -1,8 +1,10 @@
+import asyncio
 import importlib
 import string
 import os
 import json
 import sys
+import webbrowser
 
 import dearpygui.dearpygui as dpg
 import discord
@@ -97,6 +99,11 @@ class ByteX(commands.Bot):
         else:
             await ctx.send(f"Command '{command_name}' does not exist.")
 
+    async def stop_bot(self):
+        await self.client.close()
+
+
+global bot
 
 global VERSION
 global username
@@ -105,7 +112,7 @@ global servers
 global friends
 global avatar_texture
 
-VERSION = "[Alpha] v0.2.0"
+VERSION = "[Alpha] v0.2.2"
 username = None
 status = None
 servers = None
@@ -355,6 +362,14 @@ def open_folder():
         log(ERROR, f"Error opening ByteX folder, check debug console for more details.", debug=False)
         log(ERROR, f"Error opening the ByteX folder: {e}", debug=True)
 
+def browse_cogs():
+    log(INFO, "Browsing cogs...", debug=False)
+    try:
+        webbrowser.open("https://github.com/luinbytes/ByteX-Modules")
+    except Exception as e:
+        log(ERROR, f"Error browsing cogs, check debug console for more details.", debug=False)
+        log(ERROR, f"Error browsing cogs: {e}", debug=True)
+
 def exit():
     log(INFO, "Exiting ByteX...", debug=False)
     try:
@@ -364,6 +379,23 @@ def exit():
         log(ERROR, f"Error exiting ByteX, check debug console for more details.", debug=False)
         log(ERROR, f"Error exiting ByteX: {e}", debug=True)
 
+def force_exit():
+    log(INFO, "Force exiting ByteX...", debug=True)
+    global bot
+    global bot_thread
+
+    try:
+        log(INFO, "Stopping bot...", debug=True)
+        asyncio.run(bot.close())
+        log(INFO, "Joining thread...", debug=True)
+        bot_thread.join()
+    except Exception as e:
+        log(ERROR, f"Error stopping bot: {e}", debug=True)
+
+    # Stop DearPyGui
+    log(INFO, "Stopping DearPyGui...", debug=True)
+    dpg.stop_dearpygui()
+
 if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
     width, height, channels, data = dpg.load_image(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"))
 
@@ -371,7 +403,7 @@ if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.
         avatar_texture = dpg.add_static_texture(width, height, data, tag="avatar_texture")
 
 # Main window
-with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, height=400, no_collapse=True, no_resize=True, no_move=True, pos=(0, 0), no_close=True):
+with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, height=400, no_collapse=True, no_resize=True, no_move=True, pos=(0, 0), no_close=False, on_close=force_exit):
     with dpg.menu_bar():
         with dpg.menu(label="About"):
             dpg.add_menu_item(label="About ByteX", callback=about_bytex)
@@ -385,6 +417,8 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
             dpg.add_menu_item(label="Open Folder", callback=open_folder)
             dpg.add_menu_item(label="Restart", callback=exit)
             dpg.add_menu_item(label="Exit", callback=exit)
+
+        dpg.add_menu_item(label="Exit", callback=force_exit)
 
     with dpg.tab_bar():
         # User Settings Tab
@@ -473,9 +507,11 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
                 if file.endswith(".py"):
                     extension = file[:-3]
                     current_cogs.append(extension)
-            with dpg.group(horizontal=True):
+            with dpg.group(horizontal=False):
+                dpg.add_text("Cogs are hosted and updated on github.com/luinytes/ByteX-Modules")
+                dpg.add_button(label="Browse Cogs", width=140, callback=browse_cogs)
                 dpg.add_text("Current Cogs")
-                dpg.add_input_text(hint="Current cogs", width=200, height=140, multiline=True, readonly=True, default_value="\n".join(current_cogs))
+                dpg.add_input_text(width=200, height=140, multiline=True, readonly=True, default_value="\n".join(current_cogs))
 
         # Theme Settings Tab
         with dpg.tab(label="Theme Settings"):
@@ -486,7 +522,7 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
             dpg.add_button(label="Save Theme Settings", callback=save_theme_settings)
 
 # Console Window
-with dpg.window(width=800, height=200, no_collapse=True, no_resize=True, no_title_bar=True, no_move=True, pos=(0, 400)):
+with dpg.window(width=800, height=200, no_collapse=True, no_resize=True, no_title_bar=True, no_move=True, pos=(0, 400), max_size=(800, 200), min_size=(800, 200)):
     with dpg.tab_bar():
         # Console tab
         with dpg.tab(label="Console"):
@@ -501,6 +537,7 @@ with dpg.window(width=800, height=200, no_collapse=True, no_resize=True, no_titl
 
 # Discord Functions
 def start_bot():
+    global bot
     bot = ByteX()
     try:
         log(INFO, "Starting bot...", debug=False)
@@ -521,6 +558,8 @@ async def update_status():
 
 # Main entry point
 if __name__ == "__main__":
+    global bot
+    global bot_thread
     try:
         setup_filesystem()  # Ensure filesystem is set up correctly
     except Exception as e:
@@ -532,7 +571,7 @@ if __name__ == "__main__":
     bot_thread.start()
 
     dpg.create_context()
-    dpg.create_viewport(title='ByteX', width=815, height=638, resizable=False)
+    dpg.create_viewport(title='ByteX', width=815, height=638, resizable=False, disable_close=True)
 
     dpg.setup_dearpygui()
 
@@ -543,3 +582,4 @@ if __name__ == "__main__":
 
     # Cleanup after DearPyGui exits
     dpg.destroy_context()
+
