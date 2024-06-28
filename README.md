@@ -52,8 +52,7 @@ class MyCog(commands.Cog):
     async def my_command(self, ctx):
         """
         Sends a 'Hello, world!' message to the context channel. This is an example of a simple
-        command. When a user in a server that your bot is in sends a message with the content
-        "!my_command", this function will be triggered.
+        command. When you send a message with the content"!my_command", this function will be triggered.
 
         Parameters:
             ctx (commands.Context): The context in which the command was called. This contains
