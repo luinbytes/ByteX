@@ -8,7 +8,7 @@ ByteX is a Discord bot client that allows you to manage your Discord client with
 
 ## Installation
 
-1. Clone the repository: `git clone https://github.com/yourusername/ByteX.git`
+1. Clone the repository: `git clone https://github.com/luinbytes/ByteX.git`
 
 2. Install the dependencies: `pip install -r requirements.txt`
 
