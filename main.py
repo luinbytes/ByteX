@@ -19,16 +19,15 @@ class ByteX(commands.Bot):
     def __init__(self):
         prefix_str = get_config_element("prefix")
         super().__init__(command_prefix=prefix_str)
-        self.bot = discord.Client()
-        self.message_removal_queue = []
+        self.client = discord.Client()
+
     async def on_ready(self):
         await self.load_cogs()
-        download_avatar()
+        self.download_avatar()
 
         # Update Globals
         log(INFO, "Updating globals...", debug=True)
         username = self.user.name
-        status = get_config_element("default_status")
         servers = len(self.guilds)
 
         dpg.set_value("username", f"Username: {username}")
@@ -37,6 +36,23 @@ class ByteX(commands.Bot):
 
         log(SUCCESS, "Bot is ready", debug=True)
         log(SUCCESS, f"Logged in as {self.user.name}", debug=False)
+
+    def download_avatar(self):
+        bot = ByteX()
+        log(INFO, "Downloading avatar...", debug=True)
+        try:
+            if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+                url = self.user.avatar.url
+                requests.get(url)
+                img_data = requests.get(url).content
+                with open(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"), "wb") as f:
+                    f.write(img_data)
+                log(SUCCESS, "Avatar downloaded successfully", debug=True)
+            else:
+                log(INFO, "Avatar already exists", debug=True)
+        except Exception as e:
+            log(ERROR, f"Error downloading avatar, check debug console for more details.", debug=False)
+            log(ERROR, f"Error downloading avatar: {e}", debug=True)
 
         # Set Default Status
         # status = get_config_element("default_status").lower()
@@ -347,23 +363,6 @@ def exit():
     except Exception as e:
         log(ERROR, f"Error exiting ByteX, check debug console for more details.", debug=False)
         log(ERROR, f"Error exiting ByteX: {e}", debug=True)
-def download_avatar():
-    bot = ByteX()
-    log(INFO, "Downloading avatar...", debug=True)
-    try:
-        if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
-            url = bot.user.avatar.url
-            requests.get(url)
-            img_data = requests.get(url).content
-            with open(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"), "wb") as f:
-                f.write(img_data)
-            log(SUCCESS, "Avatar downloaded successfully", debug=True)
-        else:
-            log(INFO, "Avatar already exists", debug=True)
-    except Exception as e:
-        log(ERROR, f"Error downloading avatar, check debug console for more details.", debug=False)
-        log(ERROR, f"Error downloading avatar: {e}", debug=True)
-
 
 if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
     width, height, channels, data = dpg.load_image(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"))
@@ -408,7 +407,7 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
             dpg.add_spacer(height=20)
 
             dpg.add_text("Edit User Settings")
-            dpg.add_combo(label="Startup Status [Broken]", items=["Online", "Idle", "Do Not Disturb", "Invisible"], tag="default_startup_status", default_value=get_config_element("default_status"))
+            dpg.add_combo(label="Startup Status [Broken]", items=["Online", "Idle", "Do Not Disturb", "Invisible"], tag="default_startup_status")
             dpg.add_button(label="Save User Settings", callback=save_user_settings)
 
         # RPC Settings Tab
@@ -467,6 +466,9 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
         # Config Settings Tab
         with dpg.tab(label="Cog Settings"):
             current_cogs = []
+            while not os.path.exists(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+                os.mkdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs")
+
             for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
                 if file.endswith(".py"):
                     extension = file[:-3]
@@ -477,7 +479,10 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
 
         # Theme Settings Tab
         with dpg.tab(label="Theme Settings"):
-            dpg.add_combo(label="Theme", items=["Light", "Dark"], tag="theme_setting_input", default_value=get_config_element("theme"))
+            if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "config.json")):
+                dpg.add_combo(label="Theme", items=["Light", "Dark"], tag="theme_setting_input", default_value=get_config_element("theme"))
+            else:
+                dpg.add_combo(label="Theme", items=["Light", "Dark"], tag="theme_setting_input", default_value="Dark")
             dpg.add_button(label="Save Theme Settings", callback=save_theme_settings)
 
 # Console Window
