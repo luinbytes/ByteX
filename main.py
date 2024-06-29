@@ -6,8 +6,10 @@ import json
 import sys
 import webbrowser
 
+import aiohttp
 import dearpygui.dearpygui as dpg
 import discord
+from discord import Webhook, webhook
 from discord.ext import commands, tasks
 import threading
 import requests
@@ -75,13 +77,11 @@ class ByteX(commands.Bot):
                     await ctx.send("Command not found.")
 
     async def load_cogs(self):
-        log(INFO, "Loading cogs...", debug=True)
         for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
             if file.endswith(".py"):
                 extension = file[:-3]
                 try:
                     await self.load_extension(f"cogs.{extension}")
-                    log(SUCCESS, f"Loaded extension '{extension}'", debug=True)
                 except Exception as e:
                     exception = f"{type(e).__name__}: {e}"
                     log(ERROR, f"Failed to load extension {extension}: {exception}", debug=True)
@@ -102,7 +102,6 @@ class ByteX(commands.Bot):
     async def stop_bot(self):
         await self.client.close()
 
-
 global bot
 
 global VERSION
@@ -112,7 +111,7 @@ global servers
 global friends
 global avatar_texture
 
-VERSION = "[Alpha] v0.2.2"
+VERSION = "[Alpha] v0.2.5"
 username = None
 status = None
 servers = None
@@ -141,16 +140,19 @@ LOG_TYPES = {
 
 # Logging
 def log(type, message, debug=False):
-    if debug:
-        debug_console = dpg.get_item_info("debug_console")
-        debug_console_text = dpg.get_value("debug_console")
-        debug_console_text += f"[{LOG_TYPES[type]}]: {message}\n"
-        dpg.set_value("debug_console", debug_console_text)
+    if dpg.does_item_exist("console") is False:
+        print(f"[{LOG_TYPES[type]}]: {message}")
     else:
-        console = dpg.get_item_info("console")
-        console_text = dpg.get_value("console")
-        console_text += f"[{LOG_TYPES[type]}]: {message}\n"
-        dpg.set_value("console", console_text)
+        if debug:
+            debug_console = dpg.get_item_info("debug_console")
+            debug_console_text = dpg.get_value("debug_console")
+            debug_console_text += f"[{LOG_TYPES[type]}]: {message}\n"
+            dpg.set_value("debug_console", debug_console_text)
+        else:
+            console = dpg.get_item_info("console")
+            console_text = dpg.get_value("console")
+            console_text += f"[{LOG_TYPES[type]}]: {message}\n"
+            dpg.set_value("console", console_text)
 
 # Filesystem setup
 default_config = {
@@ -159,6 +161,7 @@ default_config = {
     "deletion_delay": "20",
     "default_status": "Online",
 
+    "log_webhook": "WEBHOOK_URL_HERE",
     "theme": "Dark",
 }
 
@@ -296,7 +299,10 @@ def bind_theme():
         dpg.bind_theme(dark_theme)
         log(INFO, "Dark theme applied", debug=True)
 
-# Callback functions for saving settings
+import aiohttp
+from discord import Webhook
+import asyncio
+
 def save_user_settings(sender, app_data, user_data):
     username = dpg.get_value("username_input")
     status = dpg.get_value("default_startup_status")
@@ -370,6 +376,37 @@ def browse_cogs():
         log(ERROR, f"Error browsing cogs, check debug console for more details.", debug=False)
         log(ERROR, f"Error browsing cogs: {e}", debug=True)
 
+async def refresh_cogs():
+    bot = ByteX()
+    for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+        if file.endswith(".py"):
+            extension = file[:-3]
+            current_cogs.append(extension)
+
+    # Store first cog as default
+    if not dpg.does_item_exist("cog_input"):
+        return
+    else:
+        if len(current_cogs) > 0:
+            dpg.set_value("cog_input", current_cogs[0])
+
+    try:
+        await bot.load_extension(f"cogs.{extension}")
+        log(SUCCESS, f"Loaded extension '{extension}'", debug=True)
+    except Exception as e:
+        exception = f"{type(e).__name__}: {e}"
+        log(ERROR, f"Failed to load extension {extension}: {exception}", debug=True)
+
+def show_cogs():
+    cog = dpg.get_value("cog_input")
+    if not os.path.exists(f"{os.path.realpath(os.path.dirname(__file__))}/cogs/{cog}.py"):
+        log(ERROR, f"Cog {cog} not found!", debug=False)
+        return
+
+    with open(f"{os.path.realpath(os.path.dirname(__file__))}/cogs/{cog}.py", "r") as f:
+        source = f.read()
+        dpg.set_value("cog_src_display", source)
+
 def exit():
     log(INFO, "Exiting ByteX...", debug=False)
     try:
@@ -378,7 +415,6 @@ def exit():
     except Exception as e:
         log(ERROR, f"Error exiting ByteX, check debug console for more details.", debug=False)
         log(ERROR, f"Error exiting ByteX: {e}", debug=True)
-
 def force_exit():
     log(INFO, "Force exiting ByteX...", debug=True)
     global bot
@@ -501,17 +537,24 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
         with dpg.tab(label="Cog Settings"):
             current_cogs = []
             while not os.path.exists(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+                log(INFO, "cogs dir not found! Creating cogs directory...", debug=True)
                 os.mkdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs")
 
-            for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
-                if file.endswith(".py"):
-                    extension = file[:-3]
-                    current_cogs.append(extension)
             with dpg.group(horizontal=False):
-                dpg.add_text("Cogs are hosted and updated on github.com/luinytes/ByteX-Modules")
-                dpg.add_button(label="Browse Cogs", width=140, callback=browse_cogs)
                 dpg.add_text("Current Cogs")
-                dpg.add_input_text(width=200, height=140, multiline=True, readonly=True, default_value="\n".join(current_cogs))
+                dpg.add_combo(items=current_cogs, tag="cog_input", width=287, default_value="None")
+                with dpg.group(horizontal=True):
+                    dpg.add_button(label="Refresh Cogs", width=140, callback=asyncio.run(refresh_cogs()))
+                    dpg.add_button(label="Show cog", width=140, callback=show_cogs)
+
+            with dpg.group(horizontal=True):
+                with dpg.group(horizontal=False):
+                    dpg.add_text("Cog Source")
+                    dpg.add_input_text(hint="Cog source will appear here.", tag="cog_src_display", width=400, height=200, multiline=True, readonly=True)
+            with dpg.group(horizontal=False):
+                with dpg.group(horizontal=True):
+                    dpg.add_text("Cogs are hosted and updated on github.com/luinytes/ByteX-Modules")
+                    dpg.add_button(label="Browse Cogs", width=140, callback=browse_cogs)
 
         # Theme Settings Tab
         with dpg.tab(label="Theme Settings"):
@@ -526,10 +569,7 @@ with dpg.window(width=800, height=200, no_collapse=True, no_resize=True, no_titl
     with dpg.tab_bar():
         # Console tab
         with dpg.tab(label="Console"):
-            dpg.add_input_text(hint="Welcome to ByteX Console", tag="console", multiline=True, readonly=True, width=780, height=110)
-
-            dpg.add_input_text(label="Command", hint="Enter command here")
-            dpg.add_button(label="Execute")
+            dpg.add_input_text(hint="Welcome to ByteX Console", tag="console", multiline=True, readonly=True, width=780, height=160)
 
         # Debug tab
         with dpg.tab(label="Debug"):
@@ -569,6 +609,8 @@ if __name__ == "__main__":
     # Start the bot in the main thread
     bot_thread = threading.Thread(target=start_bot)
     bot_thread.start()
+
+    asyncio.run(refresh_cogs())
 
     dpg.create_context()
     dpg.create_viewport(title='ByteX', width=815, height=638, resizable=False, disable_close=True)
