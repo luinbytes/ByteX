@@ -15,6 +15,27 @@ import threading
 import requests
 import urllib
 
+global bot
+global operating_system
+global base_dir
+
+global VERSION
+global username
+global status
+global servers
+global friends
+global avatar_texture
+
+# Check if were on Linux or Windows
+if sys.platform == "linux":
+    operating_system = "Linux"
+    BASE_DIR = os.path.join(os.getenv("HOME"), ".ByteX")
+elif sys.platform == "win32":
+    operating_system = "Windows"
+    BASE_DIR = os.path.join(os.getenv("APPDATA"), "ByteX")
+else:
+    raise Exception("Unsupported operating system")
+
 # Create context
 dpg.create_context()
 
@@ -45,7 +66,7 @@ class ByteX(commands.Bot):
         bot = ByteX()
         log(INFO, "Downloading avatar...", debug=True)
         try:
-            if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+            if not os.path.exists(os.path.join(base_dir, "ByteX", "avatar", "avatar.png")):
                 url = self.user.avatar.url
                 requests.get(url)
                 img_data = requests.get(url).content
@@ -102,21 +123,13 @@ class ByteX(commands.Bot):
     async def stop_bot(self):
         await self.client.close()
 
-global bot
-
-global VERSION
-global username
-global status
-global servers
-global friends
-global avatar_texture
-
 VERSION = "[Alpha] v0.2.5"
 username = None
 status = None
 servers = None
 friends = None
 avatar_texture = None
+base_dir = "None"
 
 status_mapping = {
     "online": discord.Status.online,
@@ -167,15 +180,13 @@ default_config = {
 
 def setup_filesystem():
     log(INFO, "Running filesystem checks...", debug=True)
-    appdata = os.getenv("APPDATA")
-    bytex_path = os.path.join(appdata, "ByteX")
 
-    if not os.path.exists(bytex_path):
-        os.mkdir(bytex_path)
-        log(INFO, f"Path {bytex_path} created", debug=True)
+    if not os.path.exists(base_dir):
+        os.mkdir(base_dir)
+        log(INFO, f"Path {base_dir} created", debug=True)
 
     log(INFO, "Checking if config.json exists...", debug=True)
-    config_path = os.path.join(bytex_path, "config.json")
+    config_path = os.path.join(base_dir, "config.json")
 
     try:
         if os.path.exists(config_path):
@@ -191,7 +202,7 @@ def setup_filesystem():
 
     paths = []
     for subdir in subdirs:
-        path = os.path.join(bytex_path, subdir)
+        path = os.path.join(base_dir, subdir)
         paths.append(path)
 
     for path in paths:
@@ -432,7 +443,7 @@ def force_exit():
     log(INFO, "Stopping DearPyGui...", debug=True)
     dpg.stop_dearpygui()
 
-if os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+if os.path.exists(os.path.join(base_dir, "ByteX", "avatar", "avatar.png")):
     width, height, channels, data = dpg.load_image(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png"))
 
     with dpg.texture_registry():
@@ -459,7 +470,7 @@ with dpg.window(label=f"ByteX {VERSION}", tag="welcome_banner", width=800, heigh
     with dpg.tab_bar():
         # User Settings Tab
         with dpg.tab(label="User Settings"):
-            if not os.path.exists(os.path.join(os.getenv("APPDATA"), "ByteX", "avatar", "avatar.png")):
+            if not os.path.exists(os.path.join(base_dir, "ByteX", "avatar", "avatar.png")):
                 with dpg.group(horizontal=False, tag="user_settings_group"):
                     dpg.add_text("No avatar found, ByteX should download it automatically.")
                     dpg.add_text("Restart ByteX once authed to show avatar.")
